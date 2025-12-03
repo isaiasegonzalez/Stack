@@ -6,72 +6,99 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct TransactionsView: View {
-    @EnvironmentObject var transactionViewModel: TransactionViewModel
-    @EnvironmentObject var creditCardViewModel: CreditCardViewModel
-
-    @State private var selectedCardID: Int? = nil
-    @State private var selectedRange: String = "Last 30 days"
+    @Query var cards: [CreditCard]
+    @Query var transactions: [Transaction]
+    
+    @Environment(\.modelContext) private var context
+    
+    @State private var selectedCard: CreditCard? = nil
+    @State private var selectedRange: String = "All time"
     @State private var selectedCategory: String = "All"
-    @State private var expandedTransactionID: Int? = nil
-
-    // MARK: - Filters
+    @State private var expandedTransactionID: UUID? = nil
+    @State private var showAddTransactionSheet = false
+    
+    // Filters
     var filteredTransactions: [Transaction] {
-        var result = transactionViewModel.transactions
-        
-        if let selectedCardID = selectedCardID {
-            result = result.filter { $0.creditCardID == selectedCardID }
+        var result = transactions
+        if let selectedCard = selectedCard {
+            result = result.filter { $0.creditCard?.id == selectedCard.id }
         }
-        
         if selectedCategory != "All" {
             result = result.filter { $0.category == selectedCategory }
         }
-        
+        result = applyDateFilter(result)
         return result.sorted(by: { $0.date > $1.date })
     }
-
+    
+    private func applyDateFilter(_ txns: [Transaction]) -> [Transaction] {
+        let now = Date()
+        switch selectedRange {
+        case "Last 7 days":
+            return txns.filter { $0.date >= now.addingTimeInterval(-7 * 24 * 60 * 60) }
+        case "Last 30 days":
+            return txns.filter { $0.date >= now.addingTimeInterval(-30 * 24 * 60 * 60) }
+        default:
+            return txns
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 20) {
-
                     // MARK: - Select a Card
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            Button {
-                                selectedCardID = nil
-                            } label: {
-                                Text("All Cards")
-                                    .font(.subheadline)
-                                    .padding(.vertical, 10)
-                                    .padding(.horizontal, 16)
-                                    .background(selectedCardID == nil ? Color.blue.opacity(0.2) : Color(.systemGray6))
-                                    .cornerRadius(10)
-                            }
-
-                            ForEach(creditCardViewModel.creditCards) { card in
+                    if cards.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "creditcard")
+                                .font(.system(size: 34))
+                                .foregroundColor(.gray.opacity(0.6))
+                            Text("No cards added yet")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                            Text("Add a card to begin tracking transactions.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.top, 20)
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 16) {
                                 Button {
-                                    selectedCardID = card.id
+                                    selectedCard = nil
                                 } label: {
-                                    CardView(
-                                        name: card.name,
-                                        lightLogoImage: card.lightLogoImage,
-                                        topGradientColor: card.topGradientColor,
-                                        bottomGradientColor: card.bottomGradientColor,
-                                        lastFourDigits: card.lastFourDigits
-                                    )
-                                    .frame(width: 180)
-                                    .shadow(color: selectedCardID == card.id ? Color.black.opacity(0.25) : Color.clear,
-                                            radius: 5, x: 0, y: 4)
-                                    .scaleEffect(selectedCardID == card.id ? 1.05 : 1.0)
-                                    .animation(.easeInOut(duration: 0.15), value: selectedCardID)
+                                    Text("All Cards")
+                                        .font(.subheadline)
+                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 16)
+                                        .background(selectedCard == nil ? Color.blue.opacity(0.2) : Color(.systemGray6))
+                                        .cornerRadius(10)
+                                }
+                                
+                                ForEach(cards) { card in
+                                    Button {
+                                        selectedCard = card
+                                    } label: {
+                                        CardView(
+                                            name: card.name,
+                                            lightLogoImage: card.lightLogoImage,
+                                            topGradientColor: card.topGradientColor,
+                                            bottomGradientColor: card.bottomGradientColor,
+                                            lastFourDigits: card.lastFourDigits
+                                        )
+                                        .frame(width: 180)
+                                        .shadow(color: selectedCard?.id == card.id ? Color.black.opacity(0.25) : Color.clear,
+                                                radius: 5, x: 0, y: 4)
+                                        .scaleEffect(selectedCard?.id == card.id ? 1.05 : 1.0)
+                                        .animation(.easeInOut(duration: 0.15), value: selectedCard)
+                                    }
                                 }
                             }
+                            .padding()
                         }
-                        .padding()
                     }
-
                     // MARK: - Filters
                     HStack(spacing: 12) {
                         Menu {
@@ -82,10 +109,9 @@ struct TransactionsView: View {
                             Label(selectedRange, systemImage: "calendar")
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .background(Color(.systemGray6))
+                                .background(Color(.white))
                                 .cornerRadius(10)
                         }
-
                         Menu {
                             Button("All") { selectedCategory = "All" }
                             Button("Dining") { selectedCategory = "Dining" }
@@ -98,117 +124,94 @@ struct TransactionsView: View {
                             Label(selectedCategory, systemImage: "line.3.horizontal.decrease.circle")
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .background(Color(.systemGray6))
+                                .background(Color(.white))
                                 .cornerRadius(10)
                         }
                     }
                     .padding(.horizontal)
-
-                    // MARK: - Transactions List
+                    // Transactions List
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("All Transactions")
-                            .font(.headline)
-                            .padding(.horizontal)
-                            .padding(.bottom, 6)
+                        HStack {
+                            Text("All Transactions")
+                                .font(.headline)
+                            Spacer()
+                            Button {
+                                showAddTransactionSheet = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text("Add")
+                                    Image(systemName: "plus")
+                                }
+                                .foregroundColor(.blue)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 16)
                         Divider()
                             .padding(.horizontal)
-                        ForEach(filteredTransactions) { txn in
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(txn.name)
-                                        Text("\(txn.date.formatted(.dateTime.month(.abbreviated).day().year())) | \(txn.category)")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        Text("$\(txn.amount, specifier: "%.2f")")
-                                        Text("+$\(txn.cashback, specifier: "%.2f")")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-
-                                // Better card badge
-                                if txn.bestCardID != nil {
-                                    Button {
-                                        withAnimation(.easeInOut) {
-                                            expandedTransactionID = expandedTransactionID == txn.id ? nil : txn.id
-                                        }
-                                    } label: {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "info.circle.fill")
-                                                .font(.caption)
-                                            Text("Better card available")
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                        }
-                                        .padding(.vertical, 4)
-                                        .padding(.horizontal, 8)
-                                        .background(Color.orange.opacity(0.15))
-                                        .cornerRadius(8)
-                                        .foregroundColor(Color.orange)
-                                    }
-                                }
-
-                                // Expanded Row (Accordion)
-                                if expandedTransactionID == txn.id,
-                                   let usedCard = creditCardViewModel.creditCards.first(where: { $0.id == txn.creditCardID }),
-                                   let bestCardID = txn.bestCardID,
-                                   let bestCard = creditCardViewModel.creditCards.first(where: { $0.id == bestCardID }) {
-
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        Divider()
-
-                                        // Card used
-                                        HStack {
-                                            Image(usedCard.darkLogoImage)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 40)
-                                                .cornerRadius(6)
-
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text("Card used")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                                Text(usedCard.name)
-                                            }
-
-                                            Spacer()
-                                            Text("+$\(txn.cashback, specifier: "%.2f")")
-                                                .bold()
-                                        }
-
-                                        // Better card
-                                        HStack {
-                                            Image(bestCard.darkLogoImage)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 40, height: 24)
-                                                .cornerRadius(6)
-
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text("Better card")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                                Text(bestCard.name)
-                                            }
-
-                                            Spacer()
-                                            Text("+$\(txn.potentialCashback ?? 0, specifier: "%.2f")")
-                                                .bold()
-                                                .foregroundColor(.orange)
-                                        }
-                                    }
-                                    .padding(.vertical, 6)
-                                }
-                                Divider()
-                                    .padding(.top, 6)
+                        if filteredTransactions.isEmpty {
+                            VStack(spacing: 8) {
+                                Image(systemName: "tray")
+                                    .font(.system(size: 34))
+                                    .foregroundColor(.gray.opacity(0.6))
+                                Text("No transactions found")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                                Text("Your activity will appear here once added.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
-                            .padding(.horizontal)
-                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20)
+                        } else {
+                            ForEach(filteredTransactions) { txn in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(txn.name)
+                                            Text("\(txn.date.formatted(.dateTime.month(.abbreviated).day().year())) | \(txn.category)")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text("$\(txn.amount, specifier: "%.2f")")
+                                            Text("+$\(txn.cashback, specifier: "%.2f")")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    // Better card badge
+                                    if txn.bestCard != nil {
+                                        Button {
+                                            withAnimation(.easeInOut) {
+                                                expandedTransactionID = expandedTransactionID == txn.id ? nil : txn.id
+                                            }
+                                        } label: {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "info.circle.fill")
+                                                    .font(.caption)
+                                                Text("Better card available")
+                                                    .font(.caption)
+                                                    .fontWeight(.semibold)
+                                            }
+                                            .padding(.vertical, 4)
+                                            .padding(.horizontal, 8)
+                                            .background(Color.orange.opacity(0.15))
+                                            .cornerRadius(8)
+                                            .foregroundColor(Color.orange)
+                                        }
+                                    }
+                                    // Expanded Row (Accordion)
+                                    if expandedTransactionID == txn.id {
+                                        TransactionDetailAccordion(txn: txn)
+                                    }
+                                    Divider()
+                                        .padding(.top, 6)
+                                }
+                                .padding(.horizontal)
+                                .padding(.vertical, 6)
+                            }
                         }
                     }
                 }
@@ -217,12 +220,66 @@ struct TransactionsView: View {
             .navigationTitle("Transactions")
             .navigationBarTitleDisplayMode(.inline)
             .background(Color(.systemGray6))
+            .sheet(isPresented: $showAddTransactionSheet) {
+                AddTransactionSheet()
+            }
         }
+    }
+}
+
+// Accordion Component
+struct TransactionDetailAccordion: View {
+    let txn: Transaction
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+            // Card used
+            if let used = txn.creditCard {
+                HStack {
+                    Image(used.darkLogoImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40)
+                        .cornerRadius(6)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Card used")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(used.name)
+                    }
+                    Spacer()
+                    Text("+$\(txn.cashback, specifier: "%.2f")")
+                        .bold()
+                }
+            }
+            // Better card
+            if let best = txn.bestCard {
+                HStack {
+                    Image(best.darkLogoImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 24)
+                        .cornerRadius(6)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Better card")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(best.name)
+                    }
+                    Spacer()
+                    Text("+$\(txn.potentialCashback ?? 0, specifier: "%.2f")")
+                        .bold()
+                        .foregroundColor(.orange)
+                }
+            }
+        }
+        .padding(.vertical, 6)
     }
 }
 
 #Preview {
     TransactionsView()
+        .modelContainer(for: [CreditCard.self, Transaction.self], inMemory: true)
         .environmentObject(CreditCardViewModel())
         .environmentObject(TransactionViewModel())
 }

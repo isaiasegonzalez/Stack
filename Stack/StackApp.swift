@@ -6,16 +6,16 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct StackApp: App {
-    @EnvironmentObject var creditCardViewModel: CreditCardViewModel
-    @EnvironmentObject var transactionViewModel: TransactionViewModel
     var body: some Scene {
         WindowGroup {
-            AppFlowView()
+            ContentView()
                 .environmentObject(CreditCardViewModel())
                 .environmentObject(TransactionViewModel())
         }
+        .modelContainer(for: [CreditCard.self, Transaction.self])
     }
 }

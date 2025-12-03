@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SplashScreenView: View {
     @State private var opacity = 0.0
-
+    
     var body: some View {
         ZStack {
             Color.white.ignoresSafeArea()

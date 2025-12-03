@@ -10,11 +10,11 @@ import SwiftUI
 struct AppFlowView: View {
     @EnvironmentObject var creditCardViewModel: CreditCardViewModel
     @EnvironmentObject var transactionViewModel: TransactionViewModel
-
+    
     @State private var showMainApp = false
     @State private var showEmailEntry = false
     @State private var showSignUp = false
-
+    
     var body: some View {
         ZStack {
             if showMainApp {
@@ -22,15 +22,15 @@ struct AppFlowView: View {
                     .environmentObject(creditCardViewModel)
                     .environmentObject(transactionViewModel)
                     .transition(.opacity)
-
+                
             } else if showSignUp {
                 SignUpView(showMainApp: $showMainApp)
                     .transition(.opacity)
-
+                
             } else if showEmailEntry {
                 EmailEntryView(showMainApp: $showMainApp)
                     .transition(.opacity)
-
+                
             } else {
                 SplashScreenView()
                     .onAppear {

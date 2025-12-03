@@ -12,26 +12,26 @@ struct EmailEntryView: View {
     
     @State private var email = ""
     @State private var navigateToSignUp = false
-
+    
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 24) {
                 Spacer().frame(height: 60)
-
+                
                 Text("Welcome!")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-
+                
                 Text("Please enter your email.")
                     .font(.body)
                     .foregroundColor(.secondary)
-
+                
                 TextField("example@email.com", text: $email)
                     .keyboardType(.emailAddress)
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(8)
-
+                
                 // Continue Button
                 Button(action: {
                     if !email.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -54,7 +54,7 @@ struct EmailEntryView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.leading)
                 .padding(.top, 8)
-
+                
                 Spacer()
             }
             .padding()

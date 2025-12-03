@@ -6,18 +6,48 @@
 //
 
 import Foundation
+import SwiftData
 
-// Identifiable: Uniquely identifies instances of a type (in this case, instances of City or identifiable).
-// Codable: Allows you to easily convert data between a Swift type and an external format like JSON (needed for JSONEncoder/Decoder).
-// Equatable: Capable of being compared for equality or equated (needed for toggleFavorite: sees if city is already in favoriteCities array).
-struct Transaction: Identifiable, Codable, Equatable {
-    let id: Int
-    let name: String
-    let date: Date
-    let amount: Double
-    let category: String
-    let cashback: Double
-    let creditCardID: Int
-    var bestCardID: Int? = nil
-    var potentialCashback: Double? = nil
+// SwiftData Migration Notes:
+// - Converted struct → class (SwiftData requires reference types)
+// - Added @Model annotation for persistence
+// - Changed id from Int → UUID for safer unique identifiers
+// - Properties must be var for SwiftData tracking
+// - Added relationships between cards and transactions
+// - Removed Codable/Equatable (handled automatically)
+
+@Model
+class Transaction {
+    @Attribute(.unique) var id: UUID
+    var name: String
+    var date: Date
+    var amount: Double
+    var category: String
+    var cashback: Double
+    var potentialCashback: Double?
+
+    // Relationship to CreditCard
+    @Relationship var creditCard: CreditCard?
+    @Relationship var bestCard: CreditCard?
+
+    init(
+        name: String,
+        date: Date,
+        amount: Double,
+        category: String,
+        cashback: Double,
+        potentialCashback: Double? = nil,
+        creditCard: CreditCard? = nil,
+        bestCard: CreditCard? = nil
+    ) {
+        self.id = UUID()
+        self.name = name
+        self.date = date
+        self.amount = amount
+        self.category = category
+        self.cashback = cashback
+        self.potentialCashback = potentialCashback
+        self.creditCard = creditCard
+        self.bestCard = bestCard
+    }
 }

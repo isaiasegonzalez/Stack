@@ -6,10 +6,13 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var creditCardViewModel: CreditCardViewModel
     @EnvironmentObject var transactionViewModel: TransactionViewModel
+    
     var body: some View {
         TabView{
             HomeView()
@@ -30,6 +33,8 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .modelContainer(
+            for: [CreditCard.self, Transaction.self], inMemory: true )
         .environmentObject(CreditCardViewModel())
         .environmentObject(TransactionViewModel())
 }

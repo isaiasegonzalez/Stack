@@ -13,7 +13,7 @@ struct CardView: View {
     let topGradientColor: String
     let bottomGradientColor: String
     let lastFourDigits: String
-
+    
     var body: some View {
         ZStack {
             LinearGradient(

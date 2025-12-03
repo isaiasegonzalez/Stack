@@ -6,107 +6,128 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct AddCardSheet: View {
-    @EnvironmentObject var creditCardViewModel: CreditCardViewModel
-    var onAdd: (CreditCard) -> Void
+    @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-
-    // Static Card Options
-    private let availableCards: [CreditCard] = [
-        CreditCard(
-            id: 1,
-            name: "Sapphire Reserve",
-            balance: 847.32,
-            dueDate: ISO8601DateFormatter().date(from: "2025-11-05T00:00:00Z") ?? Date(),
-            benefits: """
-                Cardholders earn 3X points on travel and dining (after earning your annual travel credit) and 1X on all other purchases. It provides an annual $300 travel credit, Priority Pass™ airport lounge access, comprehensive travel insurance, and perks like Global Entry/TSA PreCheck reimbursement. Points are worth 50% more when redeemed for travel through Chase Ultimate Rewards®, and users can also transfer points 1:1 to top airline and hotel partners. These benefits make it ideal for those seeking luxury travel experiences and strong rewards value.
-                """,
-            lightLogoImage: "ChaseWhite",
-            darkLogoImage: "ChaseBlack",
-            topGradientColor: "ChaseTop",
-            bottomGradientColor: "ChaseBottom",
-            lastFourDigits: "1234"
-        ),
-        CreditCard(
-            id: 2,
-            name: "Gold Card",
-            balance: 847.32,
-            dueDate: ISO8601DateFormatter().date(from: "2025-11-05T00:00:00Z") ?? Date(),
-            benefits: """
-                Cardholders earn 4X Membership Rewards® points at restaurants (including takeout and delivery) and at U.S. supermarkets (on up to $25,000 per year, then 1X), 3X points on flights booked directly with airlines or on amextravel.com, and 1X on other purchases. The card offers up to $120 in annual dining credits (enrollment required) and up to $120 in Uber Cash for rides or eats in the U.S. (when added to your Uber account). With no foreign transaction fees and premium purchase protection, it’s perfect for food lovers and frequent travelers seeking rich, everyday rewards and valuable lifestyle perks.
-                """,
-            lightLogoImage: "AmericanExpressWhite",
-            darkLogoImage: "AmericanExpressBlack",
-            topGradientColor: "AmericanExpressTop",
-            bottomGradientColor: "AmericanExpressBottom",
-            lastFourDigits: "5678"
-        ),
-        CreditCard(
-            id: 3,
-            name: "Venture X",
-            balance: 847.32,
-            dueDate: ISO8601DateFormatter().date(from: "2025-11-05T00:00:00Z") ?? Date(),
-            benefits: """
-                Cardholders earn an unlimited 2X miles on all purchases and 10X miles on hotels and rental cars plus 5X on flights booked through Capital One Travel. The card includes an annual $300 travel credit, 10,000 anniversary bonus miles each year, and complimentary access to Priority Pass™ and Capital One Lounges. With trusted travel protections, Global Entry or TSA PreCheck® credit, and flexible 1:1 transfer options to airline and hotel partners, the Venture X offers exceptional value for frequent travelers looking for luxury benefits with a straightforward earning structure.
-                """,
-            lightLogoImage: "CapitalOneWhite",
-            darkLogoImage: "CapitalOneBlack",
-            topGradientColor: "CapitalOneTop",
-            bottomGradientColor: "CapitalOneBottom",
-            lastFourDigits: "9012"
-        )
-    ]
-
+    
+    @Query(sort: \CreditCard.name) private var userCards: [CreditCard]
+    
+    // Predefined templates (static list)
+    private let templates = cardTemplates
+    
+    var filteredTemplates: [CreditCardTemplate] {
+        templates.filter { template in
+            userCards.contains(where: { $0.name == template.name }) == false
+        }
+    }
+    
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Select Your Institution")
-                .font(.headline)
-                .padding(.top, 20)
-
-            // Cards List
-            LazyVGrid(columns: [GridItem(.flexible())], spacing: 16) {
-                ForEach(availableCards) { card in
-                    let alreadyAdded = creditCardViewModel.creditCards.contains { $0.name == card.name }
-
-                    Button {
-                        if !alreadyAdded {
-                            onAdd(card)
-                            dismiss()
+        NavigationStack {
+            List {
+                Section(header: Text("Popular Cards")) {
+                    ForEach(filteredTemplates) { template in
+                        NavigationLink {
+                            CardSetupView(template: template)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(template.darkLogoImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 60, height: 30)
+                                Text(template.name)
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+                            .padding(.vertical, 8)
                         }
-                    } label: {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color(.systemGray6))
-                                .frame(height: 80)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(alreadyAdded ? Color.gray.opacity(0.3) : Color.clear, lineWidth: 1)
-                                )
-                                .opacity(alreadyAdded ? 0.5 : 1.0)
-
-                            Image(card.darkLogoImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 120)
-                                .opacity(0.95)
-                        }
-                        .padding(.horizontal)
                     }
-                    .disabled(alreadyAdded)
                 }
             }
-
-            Button("Cancel", role: .cancel) {
-                dismiss()
+            .navigationTitle("Add a Card")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
             }
-            .padding(.bottom, 20)
         }
-        .background(Color(.systemBackground))
+    }
+}
+
+struct CardSetupView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    
+    let template: CreditCardTemplate
+    
+    @State private var dueDate = Date()
+    @State private var lastFourDigits = ""
+    
+    var body: some View {
+        Form {
+            Section(header: Text("Card Details")) {
+                Text(template.name)
+                    .font(.headline)
+                
+                DatePicker(
+                    "Due Date",
+                    selection: $dueDate,
+                    in: Date()...,   // prevents past dates
+                    displayedComponents: .date
+                )
+                .onChange(of: dueDate) {
+                    if dueDate < Date() {
+                        dueDate = Date()
+                    }
+                }
+                
+                // last 4 digits: numeric only and max 4 characters
+                TextField("Last 4 Digits", text: $lastFourDigits)
+                    .keyboardType(.numberPad)
+                    .onChange(of: lastFourDigits) {
+                        // keep only digits
+                        let numeric = lastFourDigits.filter { $0.isNumber }
+                        // allow max 4 characters
+                        lastFourDigits = String(numeric.prefix(4))
+                    }
+            }
+            
+            Button("Add Card") {
+                addCard()
+            }
+            .disabled(!formValid)
+        }
+        .navigationTitle("Set Up Card")
+    }
+    
+    var formValid: Bool {
+        lastFourDigits.count == 4 &&
+        dueDate >= Calendar.current.startOfDay(for: Date())
+    }
+    
+    private func addCard() {
+        let card = CreditCard(
+            name: template.name,
+            balance: 0,
+            dueDate: dueDate,
+            benefits: template.benefits,
+            lightLogoImage: template.lightLogoImage,
+            darkLogoImage: template.darkLogoImage,
+            topGradientColor: template.topGradientColor,
+            bottomGradientColor: template.bottomGradientColor,
+            lastFourDigits: lastFourDigits
+        )
+        context.insert(card)
+        dismiss()
     }
 }
 
 #Preview {
-    AddCardSheet { _ in }
-        .environmentObject(CreditCardViewModel())
+    AddCardSheet()
+        .modelContainer(
+            for: [CreditCard.self, Transaction.self],
+            inMemory: true
+        )
 }
