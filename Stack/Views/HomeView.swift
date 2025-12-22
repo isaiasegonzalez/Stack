@@ -38,7 +38,7 @@ struct HomeView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Active Cards")
                                     .font(.headline)
-                                Text("Total Balance: $\(String(format: "%.2f", totalBalance))")
+                                Text("Total Balance: $\(totalBalance, specifier: "%.2f")")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
@@ -83,7 +83,7 @@ struct HomeView: View {
                                             )
                                             .frame(width: 180)
                                             VStack(alignment: .leading, spacing: 2) {
-                                                Text("$\(String(format: "%.2f", card.balance))")
+                                                Text("$\(card.balance, specifier: "%.2f")")
                                                     .font(.subheadline)
                                                     .bold()
                                                 Text("Due \(card.dueDate.formatted(.dateTime.month(.abbreviated).day()))")
@@ -144,7 +144,7 @@ struct HomeView: View {
                                             Spacer()
                                             VStack(alignment: .trailing) {
                                                 Text("$\(txn.amount, specifier: "%.2f")")
-                                                Text("+$\(txn.cashback, specifier: "%.2f")")
+                                                Text("\(txn.cashback >= 0 ? "+" : "-")$\(abs(txn.cashback).formatted(.number.precision(.fractionLength(2))))")
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)
                                             }

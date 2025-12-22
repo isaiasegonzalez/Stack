@@ -11,6 +11,7 @@ import SwiftData
 struct AddTransactionSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @EnvironmentObject var transactionViewModel: TransactionViewModel
     
     @Query(sort: \CreditCard.name) private var cards: [CreditCard]
     
@@ -29,7 +30,7 @@ struct AddTransactionSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Basic Info
+                // Basic transaction info
                 Section(header: Text("Transaction Details")) {
                     TextField("Merchant Name", text: $name)
                         .onChange(of: name) {
@@ -62,7 +63,16 @@ struct AddTransactionSheet: View {
                 }
                 // Save Button
                 Button("Add Transaction") {
-                    addTransaction()
+                    transactionViewModel.addTransaction(
+                        name: name,
+                        date: date,
+                        rawAmount: amount,
+                        category: category,
+                        card: selectedCard,
+                        cards: cards,
+                        context: context
+                    )
+                    dismiss()
                 }
                 .disabled(formInvalid)
             }
@@ -81,24 +91,6 @@ struct AddTransactionSheet: View {
         Double(amount) == nil ||
         selectedCard == nil ||
         date > Date()
-    }
-    
-    // Save Logic
-    private func addTransaction() {
-        guard let card = selectedCard,
-              let amt = Double(amount) else { return }
-        let txn = Transaction(
-            name: name,
-            date: date,
-            amount: amt,
-            category: category,
-            cashback: 0,
-            potentialCashback: nil,
-            creditCard: card,
-            bestCard: nil
-        )
-        context.insert(txn)
-        dismiss()
     }
 }
 

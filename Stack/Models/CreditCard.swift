@@ -28,9 +28,13 @@ class CreditCard {
     var topGradientColor: String
     var bottomGradientColor: String
     var lastFourDigits: String
+    var usesPoints: Bool
+    var pointToCashRate: Double?
     
     // Relationship to transactions
     @Relationship(deleteRule: .cascade) var transactions: [Transaction]
+    // Relationship to credit card rewards
+    @Relationship(deleteRule: .cascade) var rewards: [RewardRule]
     
     init(
         name: String,
@@ -41,7 +45,9 @@ class CreditCard {
         darkLogoImage: String,
         topGradientColor: String,
         bottomGradientColor: String,
-        lastFourDigits: String
+        lastFourDigits: String,
+        usesPoints: Bool,
+        pointToCashRate: Double?
     ) {
         self.id = UUID()
         self.name = name
@@ -53,6 +59,41 @@ class CreditCard {
         self.topGradientColor = topGradientColor
         self.bottomGradientColor = bottomGradientColor
         self.lastFourDigits = lastFourDigits
+        self.usesPoints = usesPoints
+        self.pointToCashRate = pointToCashRate
         self.transactions = []
+        self.rewards = []
+    }
+}
+
+extension CreditCard {
+    func cashback(for category: String, amount: Double) -> Double {
+        // find direct category match
+        if let rule = rewards.first(where: { $0.category == category }) {
+            return amount * rule.multiplier
+        }
+        // fallback to "Other"
+        if let fallback = rewards.first(where: { $0.category == "Other" }) {
+            return amount * fallback.multiplier
+        }
+        // else return 0
+        return 0
+    }
+}
+
+extension Array where Element == CreditCard {
+    func bestCard(for category: String, amount: Double) -> (card: CreditCard?, cashback: Double) {
+        var best: CreditCard? = nil
+        var bestCashback: Double = 0
+        
+        for card in self {
+            let earned = card.cashback(for: category, amount: amount)
+            if earned > bestCashback {
+                bestCashback = earned
+                best = card
+            }
+        }
+        
+        return (best, bestCashback)
     }
 }

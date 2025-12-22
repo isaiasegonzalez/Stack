@@ -11,34 +11,52 @@ import SwiftData
 
 @MainActor
 final class CreditCardViewModel: ObservableObject {
-    // Create a new card and insert into SwiftData
-    func addCreditCard(
-        name: String,
-        balance: Double,
+    // Creates a CreditCard from a template, assigns reward rules, and inserts into SwiftData.
+    func addCard(
+        from template: CreditCardTemplate,
         dueDate: Date,
-        benefits: String,
-        lightLogoImage: String,
-        darkLogoImage: String,
-        topGradientColor: String,
-        bottomGradientColor: String,
         lastFourDigits: String,
         context: ModelContext
     ) {
+        
         let card = CreditCard(
-            name: name,
-            balance: balance,
+            name: template.name,
+            balance: 0,
             dueDate: dueDate,
-            benefits: benefits,
-            lightLogoImage: lightLogoImage,
-            darkLogoImage: darkLogoImage,
-            topGradientColor: topGradientColor,
-            bottomGradientColor: bottomGradientColor,
-            lastFourDigits: lastFourDigits
+            benefits: template.benefits,
+            lightLogoImage: template.lightLogoImage,
+            darkLogoImage: template.darkLogoImage,
+            topGradientColor: template.topGradientColor,
+            bottomGradientColor: template.bottomGradientColor,
+            lastFourDigits: lastFourDigits,
+            usesPoints: template.usesPoints,
+            pointToCashRate: template.pointToCashRate
         )
         
-        context.insert(card)
-    }
-    
+        // Assign reward rules
+        let rules = rewardRules(for: template.name)
+        
+        for (category, multiplier) in rules {
+            let rule = RewardRule(category: category, multiplier: multiplier, card: card)
+            card.rewards.append(rule)
+            }
+            context.insert(card)
+        }
+     
+     // Returns correct reward rule set for each card
+    private func rewardRules(for cardName: String) -> [String: Double] {
+        switch cardName {
+         case "Sapphire Reserve":
+             return RewardDefinitions.sapphireReserve
+         case "Gold Card":
+             return RewardDefinitions.goldCard
+         case "Venture X":
+             return RewardDefinitions.ventureX
+         default:
+             return ["Other": 0]
+         }
+     }
+     
     func fetchAllCards(context: ModelContext) -> [CreditCard] {
         let descriptor = FetchDescriptor<CreditCard>(sortBy: [SortDescriptor(\.name)])
         return (try? context.fetch(descriptor)) ?? []

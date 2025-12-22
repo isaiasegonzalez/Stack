@@ -15,6 +15,8 @@ struct CreditCardTemplate: Identifiable {
     let darkLogoImage: String
     let topGradientColor: String
     let bottomGradientColor: String
+    let usesPoints: Bool
+    let pointToCashRate: Double?   // e.g., 0.015 for Sapphire Reserve (1.5¢ per point)
 }
 
 let cardTemplates: [CreditCardTemplate] = [
@@ -26,7 +28,9 @@ let cardTemplates: [CreditCardTemplate] = [
         lightLogoImage: "ChaseWhite",
         darkLogoImage: "ChaseBlack",
         topGradientColor: "ChaseTop",
-        bottomGradientColor: "ChaseBottom"
+        bottomGradientColor: "ChaseBottom",
+        usesPoints: true,
+        pointToCashRate: 0.015   // 1 point = 1.5¢
     ),
     CreditCardTemplate(
         name: "Gold Card",
@@ -36,7 +40,9 @@ let cardTemplates: [CreditCardTemplate] = [
         lightLogoImage: "AmericanExpressWhite",
         darkLogoImage: "AmericanExpressBlack",
         topGradientColor: "AmericanExpressTop",
-        bottomGradientColor: "AmericanExpressBottom"
+        bottomGradientColor: "AmericanExpressBottom",
+        usesPoints: true,
+        pointToCashRate: 0.014
     ),
     CreditCardTemplate(
         name: "Venture X",
@@ -46,6 +52,8 @@ let cardTemplates: [CreditCardTemplate] = [
         lightLogoImage: "CapitalOneWhite",
         darkLogoImage: "CapitalOneBlack",
         topGradientColor: "CapitalOneTop",
-        bottomGradientColor: "CapitalOneBottom"
+        bottomGradientColor: "CapitalOneBottom",
+        usesPoints: true,
+        pointToCashRate: 0.01
     )
 ]

@@ -176,7 +176,7 @@ struct TransactionsView: View {
                                         Spacer()
                                         VStack(alignment: .trailing, spacing: 2) {
                                             Text("$\(txn.amount, specifier: "%.2f")")
-                                            Text("+$\(txn.cashback, specifier: "%.2f")")
+                                            Text("\(txn.cashback >= 0 ? "+" : "-")$\(abs(txn.cashback).formatted(.number.precision(.fractionLength(2))))")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
@@ -211,6 +211,19 @@ struct TransactionsView: View {
                                 }
                                 .padding(.horizontal)
                                 .padding(.vertical, 6)
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        withAnimation {
+                                            // Undo the effect of this transaction on the card balance
+                                            if let card = txn.creditCard {
+                                                card.balance -= txn.amount
+                                            }
+                                            context.delete(txn)
+                                        }
+                                    } label: {
+                                        Label("Delete Transaction", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                     }

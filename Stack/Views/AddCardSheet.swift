@@ -59,6 +59,7 @@ struct AddCardSheet: View {
 struct CardSetupView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var cardViewModel: CreditCardViewModel
     
     let template: CreditCardTemplate
     
@@ -95,7 +96,11 @@ struct CardSetupView: View {
             }
             
             Button("Add Card") {
-                addCard()
+                cardViewModel.addCard(from: template,
+                                      dueDate: dueDate,
+                                      lastFourDigits: lastFourDigits,
+                                      context: context)
+                dismiss()
             }
             .disabled(!formValid)
         }
@@ -105,22 +110,6 @@ struct CardSetupView: View {
     var formValid: Bool {
         lastFourDigits.count == 4 &&
         dueDate >= Calendar.current.startOfDay(for: Date())
-    }
-    
-    private func addCard() {
-        let card = CreditCard(
-            name: template.name,
-            balance: 0,
-            dueDate: dueDate,
-            benefits: template.benefits,
-            lightLogoImage: template.lightLogoImage,
-            darkLogoImage: template.darkLogoImage,
-            topGradientColor: template.topGradientColor,
-            bottomGradientColor: template.bottomGradientColor,
-            lastFourDigits: lastFourDigits
-        )
-        context.insert(card)
-        dismiss()
     }
 }
 

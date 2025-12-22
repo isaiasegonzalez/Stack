@@ -109,7 +109,7 @@ struct CardsView: View {
                         Text("Balance")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        Text("$\(String(format: "%.2f", card.balance))")
+                        Text("$\(card.balance, specifier: "%.2f")")
                             .font(.headline)
                     }
                     VStack(alignment: .leading) {
@@ -129,6 +129,19 @@ struct CardsView: View {
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.leading)
+            }
+            // Point conversion
+            if card.usesPoints, let rate = card.pointToCashRate {
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Point Conversion")
+                        .font(.headline)
+                    
+                    Text("In Stack, each point is treated as **\(String(format: "%.2f", rate * 100))¢** in cashback value.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                }
             }
         }
         .padding(16)
