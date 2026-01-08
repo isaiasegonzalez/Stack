@@ -10,9 +10,10 @@ import SwiftData
 
 struct TransactionsView: View {
     @Query var cards: [CreditCard]
-    @Query var transactions: [Transaction]
     
     @Environment(\.modelContext) private var context
+    @EnvironmentObject var transactionVM: TransactionViewModel
+
     
     @State private var selectedCard: CreditCard? = nil
     @State private var selectedRange: String = "All time"
@@ -22,7 +23,7 @@ struct TransactionsView: View {
     
     // Filters
     var filteredTransactions: [Transaction] {
-        var result = transactions
+        var result = transactionVM.transactions
         if let selectedCard = selectedCard {
             result = result.filter { $0.creditCard?.id == selectedCard.id }
         }
@@ -129,8 +130,16 @@ struct TransactionsView: View {
                         }
                     }
                     .padding(.horizontal)
+                    // Jessica Added
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Repository loaded: \(transactionVM.transactions.count) txns")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
                     // Transactions List
                     VStack(alignment: .leading, spacing: 0) {
+                        
                         HStack {
                             Text("All Transactions")
                                 .font(.headline)
@@ -219,6 +228,7 @@ struct TransactionsView: View {
                                                 card.balance -= txn.amount
                                             }
                                             context.delete(txn)
+                                            Task { await transactionVM.loadTransactionsFromLocal(context: context) }
                                         }
                                     } label: {
                                         Label("Delete Transaction", systemImage: "trash")
@@ -233,8 +243,13 @@ struct TransactionsView: View {
             .navigationTitle("Transactions")
             .navigationBarTitleDisplayMode(.inline)
             .background(Color(.systemGray6))
-            .sheet(isPresented: $showAddTransactionSheet) {
+            .sheet(isPresented: $showAddTransactionSheet, onDismiss: {
+                Task { await transactionVM.loadTransactionsFromLocal(context: context) }
+            }) {
                 AddTransactionSheet()
+            }
+            .task {
+                await transactionVM.loadTransactionsFromLocal(context: context)
             }
         }
     }

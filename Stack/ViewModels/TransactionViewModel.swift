@@ -3,6 +3,7 @@
 //  Stack
 //
 //  Created by Isaias Gonzalez on 10/28/25.
+//  Edited by Jessica Lin on 1/3/2026.
 //
 
 import Foundation
@@ -11,6 +12,42 @@ import SwiftData
 
 @MainActor
 final class TransactionViewModel: ObservableObject {
+
+    // UI state (for screens that want an in-memory list, not @Query)
+    @Published var transactions: [Transaction] = []
+
+    // Repo is optional so you can still do TransactionViewModel()
+    // from StackApp.swift without needing to pass anything in yet.
+    private var repository: TransactionRepository?
+
+    init(repository: TransactionRepository? = nil) {
+        self.repository = repository
+    }
+
+    /// Call this later (e.g. in AppFlowView) once you have a ModelContext
+    /// and can build LocalTransactionRepository(context: ...)
+    func configure(repository: TransactionRepository) {
+        self.repository = repository
+    }
+
+    /// Loads transactions via the repository (local SwiftData today, remote API later).
+    func loadTransactions() async {
+        guard let repository else { return }
+        do {
+            transactions = try await repository.fetchTransactions()
+        } catch {
+            print("Failed to load transactions:", error)
+        }
+    }
+
+    /// Loads transactions from local SwiftData using ModelContext.
+    /// (Later you will swap this to remote API / Plaid by changing the repository.)
+    func loadTransactionsFromLocal(context: ModelContext) async {
+        let repo = LocalTransactionRepository(context: context)
+        configure(repository: repo)
+        await loadTransactions()
+    }
+
     // Add Transaction (main logic)
     func addTransaction(
         name: String,
